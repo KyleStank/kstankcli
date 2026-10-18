@@ -111,16 +111,18 @@ When platform-sensitive code or release behavior changes, also verify Linux and 
 
 ## Build scripts and release metadata
 
-- `build-linux.sh` is the native Linux build entry point.
-- `build-windows.bat` is the native Windows build entry point.
+- `build-linux.sh` is the native Linux-hosted build entry point.
+- `build-windows.bat` is the native Windows-hosted build entry point.
+- Each script builds the Linux AMD64 and Windows AMD64 artifacts in parallel; the script name identifies the build host, not the only target.
 - Both scripts require exactly two arguments: `<version> <dev|prod>`.
 - Development builds retain debug information and disable optimization/inlining with `-N -l`.
 - Production builds use `-trimpath` and strip symbol and DWARF data with `-s -w`.
 - Both modes inject `internal/cli.Version` and `internal/cli.BuildMode` through linker flags.
 - Linux AMD64 output belongs at `build/linux/amd64/kstankcli`.
 - Windows AMD64 output belongs at `build/windows/amd64/kstankcli.exe`.
-- Linux builds generate Bash and Zsh completions at `build/linux/amd64/completions/kstankcli.bash` and `build/linux/amd64/completions/_kstankcli`.
-- Windows builds generate Git Bash and PowerShell completions at `build/windows/amd64/completions/kstankcli.bash` and `build/windows/amd64/completions/kstankcli.ps1`.
+- Both scripts generate Bash and Zsh completions at `build/linux/amd64/completions/kstankcli.bash` and `build/linux/amd64/completions/_kstankcli`.
+- Both scripts generate Git Bash and PowerShell completions at `build/windows/amd64/completions/kstankcli.bash` and `build/windows/amd64/completions/kstankcli.ps1`.
+- Generate every completion with the executable native to the build host; never attempt to execute a cross-compiled artifact.
 - Completion generation is part of a successful build. Do not ignore or mask completion-generation failures.
 - Keep Bash scripts LF-terminated and Windows batch scripts CRLF-terminated through `.gitattributes`.
 - Do not commit generated binaries or other files under `build/`.

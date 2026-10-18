@@ -24,16 +24,16 @@ build-windows.bat 0.1.0 dev
 build-windows.bat 0.1.0 prod
 ```
 
-Both scripts produce AMD64 binaries beneath `build/<os>/amd64/`. Development builds retain symbols and disable compiler optimization and inlining to make debugging easier. Production builds enable `-trimpath` and strip symbol and DWARF data using `-s -w`. Both embed the supplied version and mode:
+Either script produces both Linux and Windows AMD64 binaries in parallel beneath `build/<os>/amd64/`; use the script native to the operating system where the build runs. Development builds retain symbols and disable compiler optimization and inlining to make debugging easier. Production builds enable `-trimpath` and strip symbol and DWARF data using `-s -w`. Both embed the supplied version and mode:
 
 ```bash
 ./build/linux/amd64/kstankcli --version
 # kstankcli version 0.1.0 (prod)
 ```
 
-The Linux build generates `build/linux/amd64/completions/kstankcli.bash` for Bash and `build/linux/amd64/completions/_kstankcli` for Zsh. The Windows build generates `build/windows/amd64/completions/kstankcli.bash` for Git Bash and `build/windows/amd64/completions/kstankcli.ps1` for PowerShell. A completion-generation failure fails the build.
+Each build generates `build/linux/amd64/completions/kstankcli.bash` for Bash, `build/linux/amd64/completions/_kstankcli` for Zsh, `build/windows/amd64/completions/kstankcli.bash` for Git Bash, and `build/windows/amd64/completions/kstankcli.ps1` for PowerShell. The script uses the executable native to the build host to generate every completion, so it never attempts to run a cross-compiled binary. A completion-generation failure fails the build.
 
-The Linux script builds Linux, and the Windows batch script builds Windows. Direct `go build` remains available for normal development checks.
+Direct `go build` remains available for normal development checks.
 
 Add the directory containing the binary to `PATH`. The Windows executable is designed to be called from Git Bash, PowerShell, or Command Prompt.
 
@@ -94,7 +94,7 @@ kstankcli pz run --debug --no-steam
 kstankcli pz copy-local-mod MyMod
 kstankcli pz copy-local-mod MyMod --force
 
-# Linux only; requires sudo and ipsec
+# Linux with systemd only; requires sudo, systemctl, systemd-run, ipsec, and pkill
 kstankcli sonora vpn start
 kstankcli sonora vpn stop
 kstankcli sonora vpn restart
@@ -102,7 +102,7 @@ kstankcli sonora vpn restart
 
 The Git configuration profiles set repository-local `user.name` and `user.email` values. They do not modify global Git configuration. Mod copying validates the mod name, builds the new copy in a temporary sibling directory, and does not replace an existing local mod unless `--force` is supplied.
 
-Starting the Sonora VPN waits up to five seconds for the IPsec daemon and its control interface to become ready, then waits for the `sonoraquestv10` connection command to finish. Restarting stops IPsec before running that complete start sequence. These commands are unavailable on Windows.
+Starting the Sonora VPN starts `strongswan-starter.service` through systemd, waits up to five seconds for the IPsec daemon and its control interface to become ready, then waits for the `sonoraquestv10` connection command to finish. Stopping first disconnects `sonoraquestv10`, then stops the systemd service. If a `charon` process from an earlier non-systemd launch remains available, the command uses a transient systemd service to send `SIGTERM` only to exact-name `charon` processes and waits up to 30 seconds to confirm shutdown. Restarting completes that shutdown sequence before running the complete start sequence. These commands are unavailable on Windows.
 
 A child process cannot change its parent shell's current directory. Use:
 
