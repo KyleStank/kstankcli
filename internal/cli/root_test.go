@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -55,15 +56,72 @@ func execute(t *testing.T, options Options, args ...string) error {
 func TestConfigAndPZRun(t *testing.T) {
 	options, runner, _ := testOptions(t)
 	install := t.TempDir()
-	if err := execute(t, options, "config", "set", "project-zomboid.install-directory", install); err != nil {
+	executable := filepath.Join(install, "projectzomboid.sh")
+	if err := os.WriteFile(executable, []byte("test"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := execute(t, options, "config", "set", "projectZomboid.installDirectory", install); err != nil {
+		t.Fatal(err)
+	}
+	if err := execute(t, options, "config", "set", "projectZomboid.executable", executable); err != nil {
 		t.Fatal(err)
 	}
 	if err := execute(t, options, "pz", "run", "--debug", "--no-steam"); err != nil {
 		t.Fatal(err)
 	}
-	want := process.Command{Name: filepath.Join(install, "projectzomboid.sh"), Args: []string{"-debug", "-nosteam"}, Dir: install}
+	want := process.Command{Name: executable, Args: []string{"-debug", "-nosteam"}, Dir: install}
 	if len(runner.commands) != 1 || !reflect.DeepEqual(runner.commands[0], want) {
 		t.Fatalf("commands = %#v, want %#v", runner.commands, want)
+	}
+}
+
+func TestConfigValidateChecksSchemaPathFields(t *testing.T) {
+	options, _, output := testOptions(t)
+	missing := filepath.Join(t.TempDir(), "missing")
+	root, err := options.RootResolver.Resolve()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Default()
+	cfg.ProjectZomboid.HomeDirectory = missing
+	if err := config.Write(config.Path(root), cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	output.Reset()
+	err = execute(t, options, "config", "validate")
+	if err == nil {
+		t.Fatal("expected validation error")
+	}
+	got := err.Error()
+	if !bytes.Contains([]byte(got), []byte(`projectZomboid.homeDirectory (exists): "`+missing+`" does not exist`)) {
+		t.Fatalf("error %q does not contain path validation failure", got)
+	}
+	for _, key := range []string{"projectZomboid.installDirectory", "projectZomboid.executable"} {
+		if !bytes.Contains([]byte(got), []byte(key+" (required)")) {
+			t.Errorf("error %q does not contain required failure for %s", got, key)
+		}
+	}
+}
+
+func TestConfigEditRejectsUnsupportedEditorWithoutBlockingLoad(t *testing.T) {
+	options, runner, _ := testOptions(t)
+	root, err := options.RootResolver.Resolve()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Default()
+	cfg.Editor = "vim"
+	if err := config.Write(config.Path(root), cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	err = execute(t, options, "config", "edit")
+	if err == nil || !bytes.Contains([]byte(err.Error()), []byte("editor (oneOf)")) {
+		t.Fatalf("expected editor validation failure, got %v", err)
+	}
+	if len(runner.commands) != 0 {
+		t.Fatalf("invalid editor executed commands: %#v", runner.commands)
 	}
 }
 
@@ -151,7 +209,7 @@ func TestPZRequiresConfiguredPath(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected missing-setting error")
 	}
-	want := "kstankcli config set project-zomboid.home-directory <path>"
+	want := "kstankcli config set projectZomboid.homeDirectory <absolute-path>"
 	if !bytes.Contains([]byte(err.Error()), []byte(want)) {
 		t.Fatalf("error %q does not contain %q", err, want)
 	}
@@ -161,20 +219,24 @@ func TestWindowsPZRunRequiresExecutable(t *testing.T) {
 	options, runner, _ := testOptions(t)
 	options.GOOS = "windows"
 	install := t.TempDir()
-	if err := execute(t, options, "config", "set", "project-zomboid.install-directory", install); err != nil {
+	if err := execute(t, options, "config", "set", "projectZomboid.installDirectory", install); err != nil {
 		t.Fatal(err)
 	}
 	err := execute(t, options, "pz", "run")
-	if err == nil || !bytes.Contains([]byte(err.Error()), []byte("project-zomboid.executable")) {
+	if err == nil || !bytes.Contains([]byte(err.Error()), []byte("projectZomboid.executable")) {
 		t.Fatalf("expected actionable executable error, got %v", err)
 	}
-	if err := execute(t, options, "config", "set", "project-zomboid.executable", "ProjectZomboid64.exe"); err != nil {
+	executable := filepath.Join(t.TempDir(), "ProjectZomboid64.exe")
+	if err := os.WriteFile(executable, []byte("test"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := execute(t, options, "config", "set", "projectZomboid.executable", executable); err != nil {
 		t.Fatal(err)
 	}
 	if err := execute(t, options, "pz", "run"); err != nil {
 		t.Fatal(err)
 	}
-	want := process.Command{Name: filepath.Join(install, "ProjectZomboid64.exe"), Dir: install}
+	want := process.Command{Name: executable, Dir: install}
 	if len(runner.commands) != 1 || !reflect.DeepEqual(runner.commands[0], want) {
 		t.Fatalf("commands = %#v, want %#v", runner.commands, want)
 	}

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/KyleStank/kstankcli/internal/config"
 	"github.com/KyleStank/kstankcli/internal/process"
@@ -91,6 +90,9 @@ func newConfigEditCommand(options Options) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err := config.ValidateFields(cfg, "editor"); err != nil {
+				return fmt.Errorf("validate editor configuration: %w", err)
+			}
 			return options.Runner.Run(cmd.Context(), process.Command{Name: cfg.Editor, Args: []string{path}})
 		},
 	}
@@ -98,24 +100,14 @@ func newConfigEditCommand(options Options) *cobra.Command {
 
 func newConfigValidateCommand(options Options) *cobra.Command {
 	return &cobra.Command{
-		Use: "validate", Short: "Validate configuration syntax, version, and configured paths", Args: cobra.NoArgs,
+		Use: "validate", Short: "Validate configuration schema and field values", Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			path, cfg, err := loadConfig(options)
 			if err != nil {
 				return err
 			}
-			for _, candidate := range []struct{ name, path string }{
-				{"project-zomboid.home-directory", cfg.ProjectZomboid.HomeDirectory},
-				{"project-zomboid.install-directory", cfg.ProjectZomboid.InstallDirectory},
-			} {
-				if candidate.path == "" {
-					continue
-				}
-				if _, err := os.Stat(candidate.path); err != nil {
-					if _, printErr := fmt.Fprintf(cmd.ErrOrStderr(), "Warning: %s %q is unavailable: %v\n", candidate.name, candidate.path, err); printErr != nil {
-						return printErr
-					}
-				}
+			if err := config.ValidateAllFields(cfg); err != nil {
+				return err
 			}
 			_, err = fmt.Fprintln(cmd.OutOrStdout(), "Valid:", path)
 			return err
@@ -128,7 +120,7 @@ func newConfigSetCommand(options Options) *cobra.Command {
 		Use: "set <key> <value>", Short: "Set a typed configuration value", Args: cobra.ExactArgs(2),
 		ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
-				return configKeys(), cobra.ShellCompDirectiveNoFileComp
+				return config.SettableKeys(), cobra.ShellCompDirectiveNoFileComp
 			}
 			return nil, cobra.ShellCompDirectiveDefault
 		},
@@ -146,7 +138,7 @@ func newConfigSetCommand(options Options) *cobra.Command {
 			} else if !errors.Is(err, os.ErrNotExist) {
 				return fmt.Errorf("inspect config %q: %w", path, err)
 			}
-			if err := setConfigValue(&cfg, args[0], args[1]); err != nil {
+			if err := config.SetValue(&cfg, args[0], args[1]); err != nil {
 				return err
 			}
 			if err := config.Write(path, cfg); err != nil {
@@ -157,37 +149,6 @@ func newConfigSetCommand(options Options) *cobra.Command {
 		},
 	}
 	return command
-}
-
-func configKeys() []string {
-	return []string{"editor", "project-zomboid.home-directory", "project-zomboid.install-directory", "project-zomboid.executable"}
-}
-
-func setConfigValue(cfg *config.Config, key, value string) error {
-	switch key {
-	case "editor":
-		if value == "" {
-			return errors.New("editor must not be empty")
-		}
-		cfg.Editor = value
-	case "project-zomboid.home-directory":
-		if value == "" {
-			cfg.ProjectZomboid.HomeDirectory = ""
-		} else {
-			cfg.ProjectZomboid.HomeDirectory = filepath.Clean(value)
-		}
-	case "project-zomboid.install-directory":
-		if value == "" {
-			cfg.ProjectZomboid.InstallDirectory = ""
-		} else {
-			cfg.ProjectZomboid.InstallDirectory = filepath.Clean(value)
-		}
-	case "project-zomboid.executable":
-		cfg.ProjectZomboid.Executable = value
-	default:
-		return fmt.Errorf("unknown config key %q (valid keys: %v)", key, configKeys())
-	}
-	return nil
 }
 
 func loadConfig(options Options) (string, config.Config, error) {

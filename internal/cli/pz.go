@@ -1,9 +1,7 @@
 package cli
 
 import (
-	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/KyleStank/kstankcli/internal/config"
@@ -30,8 +28,11 @@ func newPZPathCommand(options Options) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			path, err := pzConfiguredPath(cfg, args[0])
+			path, key, err := pzConfiguredPath(cfg, args[0])
 			if err != nil {
+				return err
+			}
+			if err := config.ValidateFields(cfg, key); err != nil {
 				return err
 			}
 			_, err = fmt.Fprintln(cmd.OutOrStdout(), path)
@@ -49,11 +50,11 @@ func newPZOpenCommand(options Options) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			path, err := pzConfiguredPath(cfg, args[0])
+			path, key, err := pzConfiguredPath(cfg, args[0])
 			if err != nil {
 				return err
 			}
-			if err := requireDirectory(path); err != nil {
+			if err := config.ValidateFields(cfg, key); err != nil {
 				return err
 			}
 			var invocation process.Command
@@ -79,22 +80,11 @@ func newPZRunCommand(options Options) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			install, err := requirePZSetting(cfg.ProjectZomboid.InstallDirectory, "project-zomboid.install-directory")
-			if err != nil {
+			if err := config.ValidateFields(cfg, "projectZomboid.installDirectory", "projectZomboid.executable"); err != nil {
 				return err
 			}
-			if err := requireDirectory(install); err != nil {
-				return err
-			}
+			install := cfg.ProjectZomboid.InstallDirectory
 			executable := cfg.ProjectZomboid.Executable
-			if executable == "" {
-				if options.GOOS != "linux" {
-					return errors.New("Project Zomboid executable is not configured; run: kstankcli config set project-zomboid.executable <path-or-name>")
-				}
-				executable = filepath.Join(install, "projectzomboid.sh")
-			} else if !filepath.IsAbs(executable) {
-				executable = filepath.Join(install, executable)
-			}
 			var arguments []string
 			if debug {
 				arguments = append(arguments, "-debug")
@@ -119,10 +109,10 @@ func newPZCopyCommand(options Options) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			home, err := requirePZSetting(cfg.ProjectZomboid.HomeDirectory, "project-zomboid.home-directory")
-			if err != nil {
+			if err := config.ValidateFields(cfg, "projectZomboid.homeDirectory"); err != nil {
 				return err
 			}
+			home := cfg.ProjectZomboid.HomeDirectory
 			if err := pz.CopyLocalMod(home, args[0], force); err != nil {
 				return err
 			}
@@ -134,31 +124,15 @@ func newPZCopyCommand(options Options) *cobra.Command {
 	return command
 }
 
-func pzConfiguredPath(cfg config.Config, name string) (string, error) {
+func pzConfiguredPath(cfg config.Config, name string) (string, string, error) {
+	var value, key string
 	switch name {
 	case "home":
-		return requirePZSetting(cfg.ProjectZomboid.HomeDirectory, "project-zomboid.home-directory")
+		value, key = cfg.ProjectZomboid.HomeDirectory, "projectZomboid.homeDirectory"
 	case "install":
-		return requirePZSetting(cfg.ProjectZomboid.InstallDirectory, "project-zomboid.install-directory")
+		value, key = cfg.ProjectZomboid.InstallDirectory, "projectZomboid.installDirectory"
 	default:
-		return "", fmt.Errorf("unknown Project Zomboid path %q (expected home or install)", name)
+		return "", "", fmt.Errorf("unknown Project Zomboid path %q (expected home or install)", name)
 	}
-}
-
-func requirePZSetting(value, key string) (string, error) {
-	if value == "" {
-		return "", fmt.Errorf("Project Zomboid setting %s is empty; run: kstankcli config set %s <path>", key, key)
-	}
-	return value, nil
-}
-
-func requireDirectory(path string) error {
-	info, err := os.Stat(path)
-	if err != nil {
-		return fmt.Errorf("inspect directory %q: %w", path, err)
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("%q is not a directory", path)
-	}
-	return nil
+	return value, key, nil
 }

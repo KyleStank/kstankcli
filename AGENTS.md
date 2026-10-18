@@ -71,6 +71,10 @@ The goal is a typed CLI with discoverable commands, safe filesystem and process 
 - Without an override, the root is `.kstankcli` beneath the directory returned by `os.UserHomeDir()` on both platforms.
 - Use `filepath.Join` and native path semantics. Expand only a leading standalone `~`, `~/`, or `~\` where the existing resolver supports it; do not implement general shell or environment-variable expansion.
 - Configuration lives in `<root>/config.json` and uses a versioned, typed schema.
+- `config set` paths use the exact JSON field names, joined with dots for nested values. Derive settable keys from the typed schema rather than maintaining a separate CLI naming convention.
+- Configuration field behavior is declared on the typed schema with comma-separated struct-tag options and discovered centrally through reflection in `internal/config`; do not duplicate field lists or per-key metadata in CLI commands. `config` tags describe value behavior such as `readonly` and `path`, while `validate` tags declare an ordered list of validators such as `required`, `absolute`, `exists`, `directory`, `file`, and parameterized rules such as `oneOf=code`.
+- Struct tags are inert metadata. Every new `config` option or validator must have explicit, tested handling in the configuration package. Keep tag parsing option-based rather than comparing complete tag strings, derive user-facing keys from `json` tags, reject unknown validators and unsupported field types clearly, and test multiple validators and failure aggregation.
+- Keep schema compatibility separate from field validation. Loading and writing must reject unsupported schema versions but may preserve field values that are invalid or temporarily unavailable. `config validate` runs all field validators and reports all failures; commands validate only the fields they are about to consume. `config set` validates the selected field and rolls back the in-memory change before writing when validation fails.
 - Decode configuration strictly so unknown fields and unsupported schema versions produce clear errors.
 - A missing config file must not break commands that do not require configuration.
 - Missing command-specific values must produce actionable errors that identify the setting and the command needed to set it.
@@ -133,6 +137,9 @@ When platform-sensitive code or release behavior changes, also verify Linux and 
 - Document platform prerequisites per command rather than implying every user needs every external tool.
 - Explain safety-affecting defaults such as repository-local configuration and overwrite flags.
 - Preserve the documented distinction between printing a path and changing a parent shell's current directory.
+- This is an AI-first project. Treat `AGENTS.md` as living, versioned architectural guidance for the agents that maintain the codebase, not as a static bootstrap document.
+- Proactively update `AGENTS.md` in the same change whenever durable architecture, conventions, extension points, safety rules, validation behavior, build workflows, or maintenance expectations evolve. No separate user request is required for an in-scope update.
+- Keep `AGENTS.md` prescriptive and current: revise or remove stale guidance instead of accumulating contradictory rules, and do not turn it into a changelog or a journal of temporary implementation details.
 
 ## Working process
 

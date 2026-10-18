@@ -70,12 +70,14 @@ kstankcli config edit
 Set the machine-specific Project Zomboid locations:
 
 ```bash
-kstankcli config set project-zomboid.home-directory "/home/me/Zomboid"
-kstankcli config set project-zomboid.install-directory "/home/me/.local/share/Steam/steamapps/common/ProjectZomboid"
-kstankcli config set project-zomboid.executable "/path/to/projectzomboid-or-projectzomboid.exe"
+kstankcli config set projectZomboid.homeDirectory "/home/me/Zomboid"
+kstankcli config set projectZomboid.installDirectory "/home/me/.local/share/Steam/steamapps/common/ProjectZomboid"
+kstankcli config set projectZomboid.executable "/path/to/projectzomboid-or-projectzomboid.exe"
 ```
 
-On Linux, `pz run` defaults to `projectzomboid.sh` inside the install directory when `executable` is empty. Windows requires the executable to be configured until its correct default is confirmed during testing. A relative executable value is resolved inside the configured install directory; an absolute value is used as-is.
+`config set` keys use the exact camelCase field names from `config.json`, joined with dots for nested values. This rule applies to every settable configuration value; for example, JSON `projectZomboid.homeDirectory` is also the CLI key `projectZomboid.homeDirectory`. Invalid values are rejected without changing the stored configuration.
+
+The Project Zomboid home and installation values must be absolute paths to existing directories. The executable must be an absolute path to an existing regular file. The supported editor is currently `code`. `config validate` checks every configured field and fails after reporting all validation problems.
 
 ## Commands
 

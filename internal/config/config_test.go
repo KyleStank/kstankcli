@@ -52,3 +52,22 @@ func TestUnsupportedVersion(t *testing.T) {
 		t.Fatalf("expected version error, got %v", err)
 	}
 }
+
+func TestLoadAllowsInvalidFieldValues(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.json")
+	cfg := Default()
+	cfg.Editor = "vim"
+	if err := Write(path, cfg); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Editor != "vim" {
+		t.Fatalf("editor = %q, want vim", loaded.Editor)
+	}
+	if err := ValidateFields(loaded, "editor"); err == nil {
+		t.Fatal("expected editor validation failure")
+	}
+}

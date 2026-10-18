@@ -13,15 +13,15 @@ import (
 const CurrentVersion = 1
 
 type Config struct {
-	Version        int                  `json:"version"`
-	Editor         string               `json:"editor"`
+	Version        int                  `json:"version" config:"readonly"`
+	Editor         string               `json:"editor" validate:"oneOf=code"`
 	ProjectZomboid ProjectZomboidConfig `json:"projectZomboid"`
 }
 
 type ProjectZomboidConfig struct {
-	HomeDirectory    string `json:"homeDirectory"`
-	InstallDirectory string `json:"installDirectory"`
-	Executable       string `json:"executable"`
+	HomeDirectory    string `json:"homeDirectory" config:"path" validate:"required,absolute,exists,directory"`
+	InstallDirectory string `json:"installDirectory" config:"path" validate:"required,absolute,exists,directory"`
+	Executable       string `json:"executable" config:"path" validate:"required,absolute,exists,file"`
 }
 
 func Default() Config {
@@ -43,7 +43,7 @@ func Load(path string) (Config, error) {
 	if err := ensureJSONEnd(decoder); err != nil {
 		return Config{}, fmt.Errorf("decode config %q: %w", path, err)
 	}
-	if err := Validate(cfg); err != nil {
+	if err := validateSchema(cfg); err != nil {
 		return Config{}, fmt.Errorf("validate config %q: %w", path, err)
 	}
 	return cfg, nil
@@ -61,18 +61,15 @@ func ensureJSONEnd(decoder *json.Decoder) error {
 	return err
 }
 
-func Validate(cfg Config) error {
+func validateSchema(cfg Config) error {
 	if cfg.Version != CurrentVersion {
 		return fmt.Errorf("unsupported config version %d (supported: %d)", cfg.Version, CurrentVersion)
-	}
-	if cfg.Editor == "" {
-		return errors.New("editor must not be empty")
 	}
 	return nil
 }
 
 func Write(path string, cfg Config) error {
-	if err := Validate(cfg); err != nil {
+	if err := validateSchema(cfg); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(cfg, "", "  ")
