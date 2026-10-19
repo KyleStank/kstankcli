@@ -59,6 +59,7 @@ The goal is a typed CLI with discoverable commands, safe filesystem and process 
 
 - Execute external programs through the structured runner in `internal/process`.
 - Represent invocations as an executable, an argument slice, a working directory, and intentional environment overrides.
+- Mark GUI launchers as background processes when their exit status does not represent whether the requested target opened; retain foreground execution for commands whose completion or exit status matters.
 - Never build a shell command by concatenating user input.
 - Do not use `bash -c`, `sh -c`, `cmd /C`, or PowerShell command strings unless shell semantics are genuinely required and the user has approved the design.
 - Pass paths and user-provided values as individual arguments so spaces and quoting remain safe.

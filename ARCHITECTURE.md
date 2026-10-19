@@ -149,8 +149,9 @@ All external programs run through `internal/process.Runner`. A process request c
 - An optional working directory.
 - Explicit environment overrides.
 - An optional quiet-output mode.
+- An optional background-launch mode for processes, such as desktop openers, whose exit status does not represent the launched operation.
 
-The operating-system runner uses `exec.CommandContext`, passes arguments without shell interpolation, inherits standard streams unless quiet mode is requested, and merges environment overrides case-insensitively for cross-platform consistency.
+The operating-system runner passes arguments without shell interpolation, inherits standard streams unless quiet mode is requested, and merges environment overrides case-insensitively for cross-platform consistency. Foreground commands use `exec.CommandContext` and report their exit status. Background commands are started and released after successful process creation so the CLI does not interpret a desktop launcher's eventual exit status as the result of opening its target.
 
 Command handlers must not assemble shell command strings from user data. Tests replace the runner and assert exact structured invocations; they do not invoke real Git mutations, editors, desktop openers, privileged services, or VPN commands.
 
@@ -174,7 +175,7 @@ Linux and Windows are the supported operating systems. The root command rejects 
 
 Shared command names do not imply shared mechanics:
 
-- `pz open` uses `xdg-open` on Linux and `explorer.exe` on Windows.
+- `pz open` waits for `xdg-open` on Linux and starts `explorer.exe` in the background on Windows because Explorer's exit status does not reliably report whether it opened the directory.
 - Project Zomboid configuration requires native absolute paths and an absolute executable file.
 - Sonora VPN commands are Linux-only and explicitly reject Windows.
 - Git commands use the `git` executable on both platforms.

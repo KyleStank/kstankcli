@@ -62,7 +62,7 @@ func newPZOpenCommand(options Options) *cobra.Command {
 			case "linux":
 				invocation = process.Command{Name: "xdg-open", Args: []string{path}}
 			case "windows":
-				invocation = process.Command{Name: "explorer.exe", Args: []string{path}}
+				invocation = process.Command{Name: "explorer.exe", Args: []string{path}, Background: true}
 			default:
 				return fmt.Errorf("pz open is unsupported on %s (supported: linux, windows)", options.GOOS)
 			}

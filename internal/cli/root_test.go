@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -94,7 +95,8 @@ func TestConfigValidateChecksSchemaPathFields(t *testing.T) {
 		t.Fatal("expected validation error")
 	}
 	got := err.Error()
-	if !bytes.Contains([]byte(got), []byte(`projectZomboid.homeDirectory (exists): "`+missing+`" does not exist`)) {
+	wantPathFailure := fmt.Sprintf("projectZomboid.homeDirectory (exists): %q does not exist", missing)
+	if !bytes.Contains([]byte(got), []byte(wantPathFailure)) {
 		t.Fatalf("error %q does not contain path validation failure", got)
 	}
 	for _, key := range []string{"projectZomboid.installDirectory", "projectZomboid.executable"} {
@@ -212,6 +214,44 @@ func TestPZRequiresConfiguredPath(t *testing.T) {
 	want := "kstankcli config set projectZomboid.homeDirectory <absolute-path>"
 	if !bytes.Contains([]byte(err.Error()), []byte(want)) {
 		t.Fatalf("error %q does not contain %q", err, want)
+	}
+}
+
+func TestPZOpenUsesPlatformDesktopOpener(t *testing.T) {
+	tests := []struct {
+		name string
+		goos string
+		want process.Command
+	}{
+		{
+			name: "linux waits for xdg-open",
+			goos: "linux",
+			want: process.Command{Name: "xdg-open"},
+		},
+		{
+			name: "windows starts Explorer in background",
+			goos: "windows",
+			want: process.Command{Name: "explorer.exe", Background: true},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			options, runner, _ := testOptions(t)
+			options.GOOS = test.goos
+			home := t.TempDir()
+			if err := execute(t, options, "config", "set", "projectZomboid.homeDirectory", home); err != nil {
+				t.Fatal(err)
+			}
+			if err := execute(t, options, "pz", "open", "home"); err != nil {
+				t.Fatal(err)
+			}
+
+			test.want.Args = []string{home}
+			if len(runner.commands) != 1 || !reflect.DeepEqual(runner.commands[0], test.want) {
+				t.Fatalf("commands = %#v, want %#v", runner.commands, test.want)
+			}
+		})
 	}
 }
 

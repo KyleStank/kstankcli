@@ -10,11 +10,12 @@ import (
 )
 
 type Command struct {
-	Name  string
-	Args  []string
-	Dir   string
-	Env   []string
-	Quiet bool
+	Name       string
+	Args       []string
+	Dir        string
+	Env        []string
+	Quiet      bool
+	Background bool
 }
 
 type Runner interface {
@@ -35,7 +36,16 @@ func (r *OSRunner) Run(ctx context.Context, command Command) error {
 	if command.Name == "" {
 		return fmt.Errorf("executable must not be empty")
 	}
-	cmd := exec.CommandContext(ctx, command.Name, command.Args...)
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("run %s: %w", command.Name, err)
+	}
+
+	var cmd *exec.Cmd
+	if command.Background {
+		cmd = exec.Command(command.Name, command.Args...)
+	} else {
+		cmd = exec.CommandContext(ctx, command.Name, command.Args...)
+	}
 	cmd.Dir = command.Dir
 	cmd.Stdin = r.Stdin
 	if command.Quiet {
@@ -46,6 +56,15 @@ func (r *OSRunner) Run(ctx context.Context, command Command) error {
 		cmd.Stderr = r.Stderr
 	}
 	cmd.Env = mergeEnvironment(os.Environ(), command.Env)
+	if command.Background {
+		if err := cmd.Start(); err != nil {
+			return fmt.Errorf("run %s: %w", command.Name, err)
+		}
+		if err := cmd.Process.Release(); err != nil {
+			return fmt.Errorf("release %s: %w", command.Name, err)
+		}
+		return nil
+	}
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("run %s: %w", command.Name, err)
 	}

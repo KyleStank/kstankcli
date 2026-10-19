@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -34,8 +37,33 @@ func TestOSRunnerQuietDiscardsChildOutput(t *testing.T) {
 	}
 }
 
+func TestOSRunnerBackgroundDoesNotWaitForExitStatus(t *testing.T) {
+	runner := &OSRunner{Stdin: bytes.NewReader(nil), Stdout: io.Discard, Stderr: io.Discard}
+	err := runner.Run(context.Background(), Command{
+		Name:       os.Args[0],
+		Args:       []string{"-test.run=TestOSRunnerHelperProcess"},
+		Env:        []string{"KSTANKCLI_TEST_HELPER=exit"},
+		Background: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestOSRunnerBackgroundReportsStartFailure(t *testing.T) {
+	name := filepath.Join(t.TempDir(), "missing-executable")
+	err := NewOSRunner().Run(context.Background(), Command{Name: name, Background: true})
+	if err == nil || !strings.Contains(err.Error(), "run "+name) {
+		t.Fatalf("expected contextual start failure, got %v", err)
+	}
+}
+
 func TestOSRunnerHelperProcess(t *testing.T) {
-	if os.Getenv("KSTANKCLI_TEST_HELPER") != "1" {
+	switch os.Getenv("KSTANKCLI_TEST_HELPER") {
+	case "exit":
+		os.Exit(1)
+	case "1":
+	default:
 		return
 	}
 	_, _ = fmt.Fprintln(os.Stdout, "stdout")
