@@ -124,7 +124,7 @@ Creating and pushing a stable release tag starts `.github/workflows/release.yml`
 6. Generate release notes from Git commit subjects.
 7. Run the shared source checks against the tagged source.
 8. Build production packages for Linux AMD64 and Windows AMD64 with the derived application version.
-9. Create a draft GitHub Release named `kstankcli vMAJOR.MINOR.PATCH` and attach both ZIP archives.
+9. Create a draft GitHub Release named `MAJOR.MINOR.PATCH` and attach both ZIP archives. The release title is the application version without a leading `v` or project-name prefix.
 
 The workflow never publishes the release. A human must review the version, notes, and attached artifacts in GitHub and explicitly publish the draft. Pushing a release tag therefore prepares a release for review; it does not make that release public.
 

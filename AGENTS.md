@@ -145,6 +145,7 @@ After relevant changes, run the canonical Linux verification entry point:
 - Application versions and configuration schema versions are independent. Do not increment or derive one automatically from the other.
 - Release tags are immutable. Never move, replace, or reuse a published release tag; corrected artifacts require a new version.
 - `.github/workflows/release.yml` is triggered by a pushed stable release tag. It verifies the tagged source, derives the application version by removing `v`, generates notes, builds both platform archives on Linux, and creates a draft GitHub Release.
+- A GitHub Release title is the plain application version, such as `1.0.0`; do not prefix it with `v` or `kstankcli`. The associated Git tag remains `v1.0.0`.
 - Automated releases must remain drafts. Never remove draft mode or automate publication without explicit user direction; every release requires final human review.
 - Generate notes through `scripts/generate-release-notes.sh`, not ad hoc workflow formatting. Each entry contains the subject followed by a linked short commit ID in parentheses; links use the full commit ID beneath `https://github.com/KyleStank/kstankcli/commit/`. Notes exclude merge commits and bodies and order commits newest first. Use all reachable non-merge commits for the first release and `previous-published-tag..current-tag` thereafter.
 - Only published, non-prerelease releases define the previous release boundary. Refuse to prepare another release while an existing draft remains unresolved so note ranges cannot overlap silently.
