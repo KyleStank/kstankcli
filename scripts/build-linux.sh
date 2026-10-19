@@ -25,7 +25,7 @@ if [[ "$BUILD_MODE" != "dev" && "$BUILD_MODE" != "prod" ]]; then
     exit 1
 fi
 
-REPOSITORY_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPOSITORY_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 LINUX_OUTPUT_DIRECTORY="$REPOSITORY_ROOT/build/linux/amd64"
 LINUX_OUTPUT_PATH="$LINUX_OUTPUT_DIRECTORY/kstankcli"
 LINUX_COMPLETION_DIRECTORY="$LINUX_OUTPUT_DIRECTORY/completions"

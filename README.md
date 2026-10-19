@@ -14,14 +14,14 @@ The platform build scripts require both a version and a build mode:
 
 ```bash
 # Linux Bash
-./build-linux.sh 0.1.0 dev
-./build-linux.sh 0.1.0 prod
+./scripts/build-linux.sh 0.1.0 dev
+./scripts/build-linux.sh 0.1.0 prod
 ```
 
 ```bat
 REM Windows Command Prompt
-build-windows.bat 0.1.0 dev
-build-windows.bat 0.1.0 prod
+scripts\build-windows.bat 0.1.0 dev
+scripts\build-windows.bat 0.1.0 prod
 ```
 
 Either script produces both Linux and Windows AMD64 binaries in parallel beneath `build/<os>/amd64/`; use the script native to the operating system where the build runs. Development builds retain symbols and disable compiler optimization and inlining to make debugging easier. Production builds enable `-trimpath` and strip symbol and DWARF data using `-s -w`. Both embed the supplied version and mode:
@@ -126,10 +126,9 @@ See `kstankcli completion bash --help` for persistent installation guidance.
 ## Development
 
 ```bash
-gofmt -w ./cmd ./internal
-go test ./...
-go vet ./...
-go build ./...
+./scripts/verify.sh
 ```
 
-Tests use temporary roots and fake subprocess runners; they do not touch the real user configuration, Git branches, Steam installation, or mods.
+The Linux verification script checks formatting, runs tests and `go vet`, exercises the Linux-hosted production build—including Linux and Windows AMD64 artifacts and all completion files—and checks the working diff. GitHub Actions runs the same script on an Ubuntu runner. CI does not execute the Windows-hosted batch script or run the Windows binary, so Windows behavior is compilation-checked but not executed natively.
+
+Tests use temporary roots and fake subprocess runners; they do not touch the real user configuration, Git branches, Steam installation, or mods. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for package boundaries, runtime flows, extension rules, known limits, and an evidence map for auditing the design.

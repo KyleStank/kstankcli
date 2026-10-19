@@ -102,21 +102,18 @@ The goal is a typed CLI with discoverable commands, safe filesystem and process 
 - Test both successful behavior and important failure paths, especially validation, overwrite refusal, partial-operation cleanup, unsupported platforms, and missing configuration.
 - Do not test Cobra internals. Test this application's command behavior and wiring.
 
-After relevant changes, run:
+After relevant changes, run the canonical Linux verification entry point:
 
 ```bash
-gofmt -w <changed-go-files>
-go test ./...
-go vet ./...
-go build ./...
+./scripts/verify.sh
 ```
 
-When platform-sensitive code or release behavior changes, also verify Linux and Windows AMD64 builds.
+The script checks formatting without modifying files, runs tests and `go vet`, exercises the Linux-hosted production build for Linux and Windows AMD64 (including completions), and checks the working diff. Run `gofmt -w <changed-go-files>` before verification whenever Go files change. GitHub Actions must use the same script on a Linux runner. CI intentionally does not use a Windows runner due to personal-project cost constraints; it does not execute `scripts/build-windows.bat` or the Windows binary, and agents must not report a Windows cross-build as native Windows execution. When Windows-hosted release behavior changes, native Windows verification remains required before claiming that behavior was tested.
 
 ## Build scripts and release metadata
 
-- `build-linux.sh` is the native Linux-hosted build entry point.
-- `build-windows.bat` is the native Windows-hosted build entry point.
+- `scripts/build-linux.sh` is the native Linux-hosted build entry point.
+- `scripts/build-windows.bat` is the native Windows-hosted build entry point.
 - Each script builds the Linux AMD64 and Windows AMD64 artifacts in parallel; the script name identifies the build host, not the only target.
 - Both scripts require exactly two arguments: `<version> <dev|prod>`.
 - Development builds retain debug information and disable optimization/inlining with `-N -l`.
@@ -134,6 +131,7 @@ When platform-sensitive code or release behavior changes, also verify Linux and 
 ## Documentation
 
 - Keep `README.md` accurate whenever command names, configuration keys, supported platforms, prerequisites, build behavior, or examples change.
+- Keep `ARCHITECTURE.md` synchronized with implemented package boundaries, dependency direction, validation lifecycle, platform policy, extension mechanisms, known limitations, and verification behavior. Ground its claims in code and tests; do not invent rationale that repository evidence cannot support.
 - Document platform prerequisites per command rather than implying every user needs every external tool.
 - Explain safety-affecting defaults such as repository-local configuration and overwrite flags.
 - Preserve the documented distinction between printing a path and changing a parent shell's current directory.
