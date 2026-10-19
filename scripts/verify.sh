@@ -20,8 +20,8 @@ go test ./...
 echo "Running go vet..."
 go vet ./...
 
-echo "Building production release artifacts and completions..."
-./scripts/build-linux.sh 0.0.0-verify prod
+echo "Building and packaging production release artifacts..."
+./scripts/pack-linux.sh 0.0.0-verify prod
 
 echo "Checking the working diff for whitespace errors..."
 git --no-pager diff --check HEAD

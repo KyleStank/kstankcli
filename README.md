@@ -33,6 +33,20 @@ Either script produces both Linux and Windows AMD64 binaries in parallel beneath
 
 Each build generates `build/linux/amd64/completions/kstankcli.bash` for Bash, `build/linux/amd64/completions/_kstankcli` for Zsh, `build/windows/amd64/completions/kstankcli.bash` for Git Bash, and `build/windows/amd64/completions/kstankcli.ps1` for PowerShell. The script uses the executable native to the build host to generate every completion, so it never attempts to run a cross-compiled binary. A completion-generation failure fails the build.
 
+Package both target platforms from either supported build host:
+
+```bash
+# Linux Bash
+./scripts/pack-linux.sh 0.1.0 prod
+```
+
+```bat
+REM Windows Command Prompt
+scripts\pack-windows.bat 0.1.0 prod
+```
+
+Each pack script first runs its native-host build script, then creates `pack/kstankcli-<version>-linux-amd64.zip` and `pack/kstankcli-<version>-windows-amd64.zip`. Each archive contains the target binary and its target-specific completion files. Linux packaging requires `zip`; Windows packaging uses PowerShell `Compress-Archive`. Generated files beneath `build/` and `pack/` are not committed.
+
 Direct `go build` remains available for normal development checks.
 
 Add the directory containing the binary to `PATH`. The Windows executable is designed to be called from Git Bash, PowerShell, or Command Prompt.
@@ -129,6 +143,6 @@ See `kstankcli completion bash --help` for persistent installation guidance.
 ./scripts/verify.sh
 ```
 
-The Linux verification script checks formatting, runs tests and `go vet`, exercises the Linux-hosted production build—including Linux and Windows AMD64 artifacts and all completion files—and checks the working diff. GitHub Actions runs the same script on an Ubuntu runner. CI does not execute the Windows-hosted batch script or run the Windows binary, so Windows behavior is compilation-checked but not executed natively.
+The Linux verification script checks formatting, runs tests and `go vet`, exercises the Linux-hosted production build and packaging path—including both target archives—and checks the working diff. GitHub Actions runs the same script on an Ubuntu runner. CI does not execute the Windows-hosted batch scripts or run the Windows binary, so Windows behavior is compilation-checked and packaged but not executed natively.
 
 Tests use temporary roots and fake subprocess runners; they do not touch the real user configuration, Git branches, Steam installation, or mods. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for package boundaries, runtime flows, extension rules, known limits, and an evidence map for auditing the design.

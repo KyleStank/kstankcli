@@ -108,12 +108,14 @@ After relevant changes, run the canonical Linux verification entry point:
 ./scripts/verify.sh
 ```
 
-The script checks formatting without modifying files, runs tests and `go vet`, exercises the Linux-hosted production build for Linux and Windows AMD64 (including completions), and checks the working diff. Run `gofmt -w <changed-go-files>` before verification whenever Go files change. GitHub Actions must use the same script on a Linux runner. CI intentionally does not use a Windows runner due to personal-project cost constraints; it does not execute `scripts/build-windows.bat` or the Windows binary, and agents must not report a Windows cross-build as native Windows execution. When Windows-hosted release behavior changes, native Windows verification remains required before claiming that behavior was tested.
+The script checks formatting without modifying files, runs tests and `go vet`, exercises the Linux-hosted production build and packaging paths for Linux and Windows AMD64, and checks the working diff. Run `gofmt -w <changed-go-files>` before verification whenever Go files change. GitHub Actions must use the same script on a Linux runner. CI intentionally does not use a Windows runner due to personal-project cost constraints; it does not execute the Windows-hosted batch scripts or the Windows binary, and agents must not report a Windows cross-build or archive as native Windows execution. When Windows-hosted release behavior changes, native Windows verification remains required before claiming that behavior was tested.
 
 ## Build scripts and release metadata
 
 - `scripts/build-linux.sh` is the native Linux-hosted build entry point.
 - `scripts/build-windows.bat` is the native Windows-hosted build entry point.
+- `scripts/pack-linux.sh` is the native Linux-hosted packaging entry point.
+- `scripts/pack-windows.bat` is the native Windows-hosted packaging entry point.
 - Each script builds the Linux AMD64 and Windows AMD64 artifacts in parallel; the script name identifies the build host, not the only target.
 - Both scripts require exactly two arguments: `<version> <dev|prod>`.
 - Development builds retain debug information and disable optimization/inlining with `-N -l`.
@@ -126,7 +128,10 @@ The script checks formatting without modifying files, runs tests and `go vet`, e
 - Generate every completion with the executable native to the build host; never attempt to execute a cross-compiled artifact.
 - Completion generation is part of a successful build. Do not ignore or mask completion-generation failures.
 - Keep Bash scripts LF-terminated and Windows batch scripts CRLF-terminated through `.gitattributes`.
-- Do not commit generated binaries or other files under `build/`.
+- Pack scripts require exactly two arguments: `<version> <dev|prod>`, invoke the matching host build script, and create `pack/kstankcli-<version>-<os>-amd64.zip` for both target platforms.
+- Linux archives contain `kstankcli` plus Bash and Zsh completions. Windows archives contain `kstankcli.exe` plus Git Bash and PowerShell completions.
+- Stage and successfully create both archives before replacing existing packages for the same version.
+- Do not commit generated binaries, completions, or archives under `build/` or `pack/`.
 
 ## Documentation
 

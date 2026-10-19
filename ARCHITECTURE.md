@@ -203,7 +203,9 @@ If this workflow gains additional VPNs, configurable service definitions, or reu
 
 Development builds preserve debugging information and disable optimization/inlining. Production builds use `-trimpath` and strip symbol and DWARF data. Generated output remains beneath ignored `build/` directories.
 
-`scripts/verify.sh` is the canonical Linux development and CI verification entry point. It checks formatting, tests, and vets before invoking the Linux-hosted build script with a synthetic production version. That build produces Linux and Windows AMD64 artifacts and all completion files, exercising the actual Linux release path. Verification then checks the working diff for whitespace errors.
+`scripts/pack-linux.sh` and `scripts/pack-windows.bat` are matching host-specific packaging entry points. Each invokes its host build script, stages target-specific binary and completion layouts, creates both archives successfully before replacement, and publishes versioned ZIP files beneath ignored `pack/` output.
+
+`scripts/verify.sh` is the canonical Linux development and CI verification entry point. It checks formatting, tests, and vets before invoking the Linux-hosted pack script with a synthetic production version. Packaging exercises the actual Linux release path, both target builds, completion generation, and both archive layouts. Verification then checks the working diff for whitespace errors.
 
 GitHub Actions runs that script on an Ubuntu runner. It does not invoke the Windows-hosted batch script, use a Windows runner, or execute the Windows binary. Windows assurance in CI is therefore compilation-only.
 
@@ -222,7 +224,7 @@ The test suite is hermetic with respect to the developer's real configuration, G
 
 ## Known limits and pressure points
 
-- CI cross-compiles Windows but does not execute Windows tests or the Windows binary.
+- CI cross-compiles and packages Windows but does not execute Windows tests, the Windows-hosted scripts, or the Windows binary.
 - Reflection currently targets the value-struct and scalar shape used by the schema. Adding pointers, slices, maps, or embedded polymorphic structures requires an explicit traversal design.
 - The validator registry supports string fields today. New field types require intentional parsing and validation semantics.
 - Sonora VPN orchestration is still in `internal/cli` and should be extracted if its domain surface grows.
@@ -244,7 +246,7 @@ An architecture review should verify claims against these evidence points:
 | Generic contextual validators | `internal/config/validation.go`, `internal/config/validation_test.go` |
 | Safe mod replacement | `internal/pz/copy.go`, `internal/pz/copy_test.go` |
 | VPN lifecycle and timeout behavior | `internal/cli/sonora.go`, `internal/cli/sonora_test.go` |
-| Cross-target release behavior | `scripts/build-linux.sh`, `scripts/build-windows.bat` |
+| Cross-target release behavior | `scripts/build-linux.sh`, `scripts/build-windows.bat`, `scripts/pack-linux.sh`, `scripts/pack-windows.bat` |
 | Linux-only CI boundary | `.github/workflows/verify.yml`, `scripts/verify.sh` |
 
 This evidence map is intentionally concrete. If files move, update the map rather than allowing plausible prose to become detached from the implementation.
