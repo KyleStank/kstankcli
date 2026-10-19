@@ -213,7 +213,7 @@ GitHub Actions runs that script on an Ubuntu runner. It does not invoke the Wind
 
 `.github/workflows/release.yml` is the tag-triggered release orchestrator. It accepts stable `vMAJOR.MINOR.PATCH` tags, finds the previous published non-prerelease GitHub Release, delegates deterministic note formatting to `scripts/generate-release-notes.sh`, runs the shared checks, invokes the Linux production pack path once with the tag's leading `v` removed, and attaches both archives to a draft GitHub Release. Existing drafts block another automated release, and publication always remains a human action.
 
-Release notes use the commit graph rather than GitHub-generated categorization. They contain only non-merge commit subjects, with newest first, from `previous-tag..current-tag`; the first release walks all history reachable from the current tag. The generator verifies both tags and requires the previous release to be an ancestor, while its hermetic shell test constructs an isolated Git repository to cover ranges, ordering, merge exclusion, body exclusion, first-release behavior, and invalid ancestry.
+Release notes use the commit graph rather than GitHub-generated categorization. They contain non-merge commit subjects followed by linked short commit IDs, with newest first, from `previous-tag..current-tag`; links target the full commit ID in this repository, and the first release walks all history reachable from the current tag. The generator verifies both tags and requires the previous release to be an ancestor, while its hermetic shell test constructs an isolated Git repository to cover ranges, ordering, link construction, merge exclusion, body exclusion, first-release behavior, and invalid ancestry.
 
 ## Testing strategy
 

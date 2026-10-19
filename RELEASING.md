@@ -144,9 +144,10 @@ previous-published-release-tag..current-release-tag
 
 For the first release, when no previous published release exists, notes contain every non-merge commit reachable from the current tag. In both cases:
 
-- Each Markdown bullet contains only the commit subject.
+- Each Markdown bullet contains the commit subject followed by its linked short commit ID, such as `Fixed config loading ([0123456](https://github.com/KyleStank/kstankcli/commit/0123456789abcdef0123456789abcdef01234567))`.
 - Merge commits and commit bodies are excluded.
 - Newest commits appear first and oldest commits appear last.
+- Commit links use the full commit ID and point to `https://github.com/KyleStank/kstankcli/commit/<full-commit-id>`.
 - The previous tag must be an ancestor of the current tag.
 - An empty set of non-merge commits is an error.
 

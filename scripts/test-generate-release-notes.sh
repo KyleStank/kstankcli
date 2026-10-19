@@ -43,7 +43,17 @@ GIT_AUTHOR_DATE="2020-01-04T00:00:00Z" GIT_COMMITTER_DATE="2020-01-04T00:00:00Z"
     git -C "$TEST_REPOSITORY" merge --quiet --no-ff feature -m "Merge feature"
 git -C "$TEST_REPOSITORY" tag v1.1.0
 
-EXPECTED_RANGE_NOTES=$'- Newest change\n- Feature change'
+INITIAL_COMMIT="$(git -C "$TEST_REPOSITORY" rev-parse v1.0.0^{commit})"
+FEATURE_COMMIT="$(git -C "$TEST_REPOSITORY" rev-parse feature^{commit})"
+NEWEST_COMMIT="$(git -C "$TEST_REPOSITORY" rev-parse main~1^{commit})"
+INITIAL_SHORT_COMMIT="$(git -C "$TEST_REPOSITORY" rev-parse --short "$INITIAL_COMMIT")"
+FEATURE_SHORT_COMMIT="$(git -C "$TEST_REPOSITORY" rev-parse --short "$FEATURE_COMMIT")"
+NEWEST_SHORT_COMMIT="$(git -C "$TEST_REPOSITORY" rev-parse --short "$NEWEST_COMMIT")"
+COMMIT_URL_ROOT="https://github.com/KyleStank/kstankcli/commit"
+
+EXPECTED_RANGE_NOTES="$(printf '%s\n%s' \
+    "- Newest change ([$NEWEST_SHORT_COMMIT]($COMMIT_URL_ROOT/$NEWEST_COMMIT))" \
+    "- Feature change ([$FEATURE_SHORT_COMMIT]($COMMIT_URL_ROOT/$FEATURE_COMMIT))")"
 ACTUAL_RANGE_NOTES="$(cd -- "$TEST_REPOSITORY" && "$GENERATOR" v1.1.0 v1.0.0)"
 if [[ "$ACTUAL_RANGE_NOTES" != "$EXPECTED_RANGE_NOTES" ]]; then
     echo "Error: release notes for a tag range did not match." >&2
@@ -51,7 +61,10 @@ if [[ "$ACTUAL_RANGE_NOTES" != "$EXPECTED_RANGE_NOTES" ]]; then
     exit 1
 fi
 
-EXPECTED_FIRST_RELEASE_NOTES=$'- Newest change\n- Feature change\n- Initial change'
+EXPECTED_FIRST_RELEASE_NOTES="$(printf '%s\n%s\n%s' \
+    "- Newest change ([$NEWEST_SHORT_COMMIT]($COMMIT_URL_ROOT/$NEWEST_COMMIT))" \
+    "- Feature change ([$FEATURE_SHORT_COMMIT]($COMMIT_URL_ROOT/$FEATURE_COMMIT))" \
+    "- Initial change ([$INITIAL_SHORT_COMMIT]($COMMIT_URL_ROOT/$INITIAL_COMMIT))")"
 ACTUAL_FIRST_RELEASE_NOTES="$(cd -- "$TEST_REPOSITORY" && "$GENERATOR" v1.1.0)"
 if [[ "$ACTUAL_FIRST_RELEASE_NOTES" != "$EXPECTED_FIRST_RELEASE_NOTES" ]]; then
     echo "Error: first-release notes did not match." >&2

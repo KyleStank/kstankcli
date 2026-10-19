@@ -53,7 +53,7 @@ Stable releases use Semantic Versioning in `MAJOR.MINOR.PATCH` form, beginning w
 
 MAJOR versions contain incompatible public-interface changes, MINOR versions add backward-compatible capabilities, and PATCH versions contain backward-compatible corrections. See [RELEASING.md](RELEASING.md) for the complete compatibility contract and version-selection policy.
 
-Pushing a stable tag such as `v1.0.0` runs the release workflow. It verifies the tagged source, generates a newest-first Markdown list of non-merge commit subjects since the previous published release, builds both platform packages on Linux, and creates a draft GitHub Release with both ZIP files attached. The workflow never publishes a release; every draft requires final human review. The first release includes all reachable non-merge commits. See [RELEASING.md](RELEASING.md) for the complete procedure.
+Pushing a stable tag such as `v1.0.0` runs the release workflow. It verifies the tagged source, generates a newest-first Markdown list of non-merge commit subjects with linked commit IDs since the previous published release, builds both platform packages on Linux, and creates a draft GitHub Release with both ZIP files attached. The workflow never publishes a release; every draft requires final human review. The first release includes all reachable non-merge commits. See [RELEASING.md](RELEASING.md) for the complete procedure.
 
 Direct `go build` remains available for normal development checks.
 

@@ -13,6 +13,7 @@ fi
 
 CURRENT_TAG="$1"
 PREVIOUS_TAG="${2:-}"
+COMMIT_URL_ROOT="https://github.com/KyleStank/kstankcli/commit"
 
 if ! REPOSITORY_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; then
     echo "Error: release notes must be generated from within a Git repository." >&2
@@ -54,7 +55,7 @@ fi
 RELEASE_NOTES="$(git -C "$REPOSITORY_ROOT" log \
     --no-merges \
     --date-order \
-    --format='- %s' \
+    --format="- %s ([%h]($COMMIT_URL_ROOT/%H))" \
     "$REVISION_RANGE")"
 
 if [[ -z "$RELEASE_NOTES" ]]; then
