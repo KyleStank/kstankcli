@@ -108,7 +108,7 @@ After relevant changes, run the canonical Linux verification entry point:
 ./scripts/verify.sh
 ```
 
-The script checks formatting without modifying files, runs tests and `go vet`, exercises the Linux-hosted production build and packaging paths for Linux and Windows AMD64, and checks the working diff. Run `gofmt -w <changed-go-files>` before verification whenever Go files change. GitHub Actions must use the same script on a Linux runner. CI intentionally does not use a Windows runner due to personal-project cost constraints; it does not execute the Windows-hosted batch scripts or the Windows binary, and agents must not report a Windows cross-build or archive as native Windows execution. When Windows-hosted release behavior changes, native Windows verification remains required before claiming that behavior was tested.
+`scripts/check.sh` centralizes formatting, tests, `go vet`, release-note-generator tests, and working-diff checks without building release packages. `scripts/verify.sh` invokes those checks and then exercises the Linux-hosted production build and packaging paths for Linux and Windows AMD64 with a synthetic version. Run `gofmt -w <changed-go-files>` before verification whenever Go files change. GitHub Actions verification must use `scripts/verify.sh` on a Linux runner; release automation uses `scripts/check.sh` followed by one production pack for the real version so it does not build twice. CI intentionally does not use a Windows runner due to personal-project cost constraints; it does not execute the Windows-hosted batch scripts or the Windows binary, and agents must not report a Windows cross-build or archive as native Windows execution. When Windows-hosted release behavior changes, native Windows verification remains required before claiming that behavior was tested.
 
 ## Build scripts and release metadata
 
@@ -133,9 +133,29 @@ The script checks formatting without modifying files, runs tests and `go vet`, e
 - Stage and successfully create both archives before replacing existing packages for the same version.
 - Do not commit generated binaries, completions, or archives under `build/` or `pack/`.
 
+## Release versioning
+
+- `RELEASING.md` is the source of truth for the release versioning policy. Keep it synchronized with release automation and do not silently invent a different versioning scheme.
+- Stable releases use Semantic Versioning as `MAJOR.MINOR.PATCH`. The first stable release is `1.0.0`.
+- Git tags use `vMAJOR.MINOR.PATCH`, such as `v1.0.0`. The leading `v` is Git metadata only.
+- Build and pack script inputs, the version embedded in the executable, `kstankcli --version` output, and release archive filenames use `MAJOR.MINOR.PATCH` without the leading `v`.
+- Given Git tag `v1.0.0`, the built application must report `1.0.0` and packages must be named with `1.0.0`, not `v1.0.0`.
+- Choose a release version by its highest-impact change: incompatible public-contract changes increment MAJOR, backward-compatible capabilities increment MINOR, and backward-compatible corrections increment PATCH.
+- Treat documented commands, arguments, flags, configuration compatibility, exit semantics, script-consumable output, supported platforms and shells, and release artifact layouts as the public compatibility contract.
+- Application versions and configuration schema versions are independent. Do not increment or derive one automatically from the other.
+- Release tags are immutable. Never move, replace, or reuse a published release tag; corrected artifacts require a new version.
+- `.github/workflows/release.yml` is triggered by a pushed stable release tag. It verifies the tagged source, derives the application version by removing `v`, generates notes, builds both platform archives on Linux, and creates a draft GitHub Release.
+- Automated releases must remain drafts. Never remove draft mode or automate publication without explicit user direction; every release requires final human review.
+- Generate notes through `scripts/generate-release-notes.sh`, not ad hoc workflow formatting. Notes contain subject lines only, exclude merge commits and bodies, and order commits newest first. Use all reachable non-merge commits for the first release and `previous-published-tag..current-tag` thereafter.
+- Only published, non-prerelease releases define the previous release boundary. Refuse to prepare another release while an existing draft remains unresolved so note ranges cannot overlap silently.
+- Release automation must use the existing Linux-hosted production pack path and attach both target archives. Do not introduce a Windows runner unless the user revisits the cost decision.
+- Do not overwrite an existing release or use asset-clobbering behavior automatically. Failed or unsuitable drafts require deliberate human resolution.
+- Do not create a tag merely because a build or pack command was run. Creating commits, tags, or releases still requires explicit user authorization.
+
 ## Documentation
 
 - Keep `README.md` accurate whenever command names, configuration keys, supported platforms, prerequisites, build behavior, or examples change.
+- Keep `RELEASING.md` accurate whenever versioning rules, release inputs, artifact identity, or the release process changes.
 - Keep `ARCHITECTURE.md` synchronized with implemented package boundaries, dependency direction, validation lifecycle, platform policy, extension mechanisms, known limitations, and verification behavior. Ground its claims in code and tests; do not invent rationale that repository evidence cannot support.
 - Document platform prerequisites per command rather than implying every user needs every external tool.
 - Explain safety-affecting defaults such as repository-local configuration and overwrite flags.

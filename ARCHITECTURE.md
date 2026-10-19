@@ -199,15 +199,21 @@ If this workflow gains additional VPNs, configurable service definitions, or reu
 
 ## Build and release model
 
+`RELEASING.md` defines the release versioning and public compatibility contract. Stable releases use `MAJOR.MINOR.PATCH` inside the application and packaged artifacts, while the corresponding immutable Git tag uses `vMAJOR.MINOR.PATCH`. Application versions and configuration schema versions are independent.
+
 `scripts/build-linux.sh` and `scripts/build-windows.bat` are host-specific entry points that both produce Linux AMD64 and Windows AMD64 artifacts in parallel. They require `<version> <dev|prod>`, inject version and build mode through linker flags, and use the executable native to the build host to generate every completion file.
 
 Development builds preserve debugging information and disable optimization/inlining. Production builds use `-trimpath` and strip symbol and DWARF data. Generated output remains beneath ignored `build/` directories.
 
 `scripts/pack-linux.sh` and `scripts/pack-windows.bat` are matching host-specific packaging entry points. Each invokes its host build script, stages target-specific binary and completion layouts, creates both archives successfully before replacement, and publishes versioned ZIP files beneath ignored `pack/` output.
 
-`scripts/verify.sh` is the canonical Linux development and CI verification entry point. It checks formatting, tests, and vets before invoking the Linux-hosted pack script with a synthetic production version. Packaging exercises the actual Linux release path, both target builds, completion generation, and both archive layouts. Verification then checks the working diff for whitespace errors.
+`scripts/check.sh` is the shared non-packaging quality gate. It checks formatting, tests, vets, exercises the release-note generator tests, and checks the working diff. `scripts/verify.sh` is the canonical Linux development and CI verification entry point; it invokes the shared checks and then the Linux-hosted pack script with a synthetic production version. Packaging exercises the actual Linux release path, both target builds, completion generation, and both archive layouts.
 
 GitHub Actions runs that script on an Ubuntu runner. It does not invoke the Windows-hosted batch script, use a Windows runner, or execute the Windows binary. Windows assurance in CI is therefore compilation-only.
+
+`.github/workflows/release.yml` is the tag-triggered release orchestrator. It accepts stable `vMAJOR.MINOR.PATCH` tags, finds the previous published non-prerelease GitHub Release, delegates deterministic note formatting to `scripts/generate-release-notes.sh`, runs the shared checks, invokes the Linux production pack path once with the tag's leading `v` removed, and attaches both archives to a draft GitHub Release. Existing drafts block another automated release, and publication always remains a human action.
+
+Release notes use the commit graph rather than GitHub-generated categorization. They contain only non-merge commit subjects, with newest first, from `previous-tag..current-tag`; the first release walks all history reachable from the current tag. The generator verifies both tags and requires the previous release to be an ancestor, while its hermetic shell test constructs an isolated Git repository to cover ranges, ordering, merge exclusion, body exclusion, first-release behavior, and invalid ancestry.
 
 ## Testing strategy
 

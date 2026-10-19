@@ -47,6 +47,14 @@ scripts\pack-windows.bat 0.1.0 prod
 
 Each pack script first runs its native-host build script, then creates `pack/kstankcli-<version>-linux-amd64.zip` and `pack/kstankcli-<version>-windows-amd64.zip`. Each archive contains the target binary and its target-specific completion files. Linux packaging requires `zip`; Windows packaging uses PowerShell `Compress-Archive`. Generated files beneath `build/` and `pack/` are not committed.
 
+## Release versioning
+
+Stable releases use Semantic Versioning in `MAJOR.MINOR.PATCH` form, beginning with `1.0.0`. Git tags add a leading `v`, so application version `1.0.0` is identified by tag `v1.0.0`. The leading `v` is not part of the application version: build and pack scripts receive `1.0.0`, `kstankcli --version` reports `1.0.0`, and archive names contain `1.0.0`.
+
+MAJOR versions contain incompatible public-interface changes, MINOR versions add backward-compatible capabilities, and PATCH versions contain backward-compatible corrections. See [RELEASING.md](RELEASING.md) for the complete compatibility contract and version-selection policy.
+
+Pushing a stable tag such as `v1.0.0` runs the release workflow. It verifies the tagged source, generates a newest-first Markdown list of non-merge commit subjects since the previous published release, builds both platform packages on Linux, and creates a draft GitHub Release with both ZIP files attached. The workflow never publishes a release; every draft requires final human review. The first release includes all reachable non-merge commits. See [RELEASING.md](RELEASING.md) for the complete procedure.
+
 Direct `go build` remains available for normal development checks.
 
 Add the directory containing the binary to `PATH`. The Windows executable is designed to be called from Git Bash, PowerShell, or Command Prompt.

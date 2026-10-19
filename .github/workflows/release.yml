@@ -1,0 +1,98 @@
+name: Draft Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  draft-release:
+    name: Build draft release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Validate release tag
+        id: version
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if [[ ! "${tag}" =~ ^v[1-9][0-9]*\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Error: release tag '${tag}' must use stable SemVer format vMAJOR.MINOR.PATCH with MAJOR greater than zero." >&2
+            exit 1
+          fi
+
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "version=${tag#v}" >> "${GITHUB_OUTPUT}"
+
+      - name: Find previous published release
+        id: previous-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          draft_tags="$(gh release list --exclude-pre-releases --limit 100 --json tagName,isDraft --jq '[.[] | select(.isDraft)] | map(.tagName) | join(", ")')"
+          if [[ -n "${draft_tags}" ]]; then
+            echo "Error: review, publish, or remove the existing draft release(s) before creating another: ${draft_tags}" >&2
+            exit 1
+          fi
+
+          previous_tag="$(gh release list --exclude-drafts --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName // ""')"
+          echo "tag=${previous_tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Generate release notes
+        env:
+          CURRENT_TAG: ${{ steps.version.outputs.tag }}
+          PREVIOUS_TAG: ${{ steps.previous-release.outputs.tag }}
+        shell: bash
+        run: |
+          if [[ -n "${PREVIOUS_TAG}" ]]; then
+            ./scripts/generate-release-notes.sh "${CURRENT_TAG}" "${PREVIOUS_TAG}" > "${RUNNER_TEMP}/release-notes.md"
+          else
+            ./scripts/generate-release-notes.sh "${CURRENT_TAG}" > "${RUNNER_TEMP}/release-notes.md"
+          fi
+
+          echo "Release notes:"
+          sed -n '1,200p' "${RUNNER_TEMP}/release-notes.md"
+
+      - name: Check tagged source
+        run: ./scripts/check.sh
+
+      - name: Build release packages
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: ./scripts/pack-linux.sh "${VERSION}" prod
+
+      - name: Create draft GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          gh release create "${RELEASE_TAG}" \
+            "pack/kstankcli-${VERSION}-linux-amd64.zip" \
+            "pack/kstankcli-${VERSION}-windows-amd64.zip" \
+            --draft \
+            --fail-on-no-commits \
+            --notes-file "${RUNNER_TEMP}/release-notes.md" \
+            --title "kstankcli ${RELEASE_TAG}" \
+            --verify-tag
